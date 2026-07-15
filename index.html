@@ -3,22 +3,35 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="description" content="NotMitish — 16-year-old developer from Nepal. Python, C, JavaScript." />
+  <meta name="theme-color" content="#121212" />
   <title>NotMitish</title>
-  <link rel="icon" href="icons/Hitler.png" />
+  <link rel="icon" href="icons/favicon.png" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="container">
+  <main class="container">
     <div class="header">
       <div class="head_text">Command Prompt</div>
-      <div class="minimize"></div>
-      <div class="maximize"></div>
-      <div class="close"></div>
+      <div class="controls">
+        <button class="minimize" aria-label="Minimize (decorative only)"></button>
+        <button class="maximize" aria-label="Maximize (decorative only)"></button>
+        <button class="close" aria-label="Close (decorative only)"></button>
+      </div>
     </div>
-    <div class="terminal" id="terminal"></div>
-  </div>
+    <div
+      class="terminal"
+      id="terminal"
+      role="log"
+      aria-live="polite"
+      aria-label="Terminal output. Click anywhere to skip the typing animation."
+      tabindex="0"
+    ></div>
+  </main>
 
   <script>
+    // Each line is either plain text (gets typed character-by-character)
+    // or html (rendered instantly — used for icon/link rows).
     const lines = [
       { prompt: "C:\\Users\\Visitor>", text: "about.me" },
       { text: "Hi! I'm NotMitish, a 16-year-old developer from Nepal!" },
@@ -26,66 +39,83 @@
       { text: "(Ok, that JavaScript part was a lie.)" },
       { prompt: "C:\\Users\\Visitor>", text: "socials.links" },
       {
-        text: '<img class="icon" src="icons/instagram.png" alt="instagram"/><a href="https://www.instagram.com/notmitish_/" target="_blank" class="typed">@notmitish</a>'
+        html: true,
+        text: '<img class="icon" src="icons/instagram.png" alt="" /><a href="https://www.instagram.com/notmitish_/" target="_blank" rel="noopener noreferrer" class="typed">@notmitish</a>'
       },
       {
-        text: '<img class="icon" src="icons/discord.png" alt="discord"/><a href="https://discord.com/invite/WNGTjJggVS" target="_blank" class="typed">@notmitish</a>'
+        html: true,
+        text: '<img class="icon" src="icons/discord.png" alt="" /><a href="https://discord.com/invite/WNGTjJggVS" target="_blank" rel="noopener noreferrer" class="typed">@notmitish</a>'
       },
       {
-        text: '<img class="icon" src="icons/youtube.png" alt="youtube"/><a href="https://www.youtube.com/@notmitish" target="_blank" class="typed">NotMitish</a>'
+        html: true,
+        text: '<img class="icon" src="icons/youtube.png" alt="" /><a href="https://www.youtube.com/@notmitish" target="_blank" rel="noopener noreferrer" class="typed">NotMitish</a>'
       },
       {
-        text: '<img class="icon" src="icons/github.png" alt="github"/><a href="https://github.com/NotMitish" target="_blank" class="typed">NotMitish</a>'
+        html: true,
+        text: '<img class="icon" src="icons/github.png" alt="" /><a href="https://github.com/NotMitish" target="_blank" rel="noopener noreferrer" class="typed">NotMitish</a>'
       },
       {
-        text: '<img class="icon" src="icons/gmail.png" alt="mail"/><a href="mailto:notashmit.69@gmail.com" target="_blank" class="typed">ashishgamer6969@gmail.com</a>'
+        html: true,
+        text: '<img class="icon" src="icons/gmail.png" alt="" /><a href="mailto:hello@example.com" class="typed">hello@example.com</a>'
       }
     ];
 
     const terminal = document.getElementById("terminal");
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    async function typeLine({ prompt = "", text }) {
+    let skip = false;
+    let done = false;
+    terminal.addEventListener("click", () => { skip = true; });
+
+    function sleep(ms) {
       return new Promise((resolve) => {
-        const line = document.createElement("div");
-        line.className = "line";
-
-        if (prompt) {
-          const promptSpan = document.createElement("span");
-          promptSpan.className = "prompt";
-          promptSpan.textContent = prompt;
-          line.appendChild(promptSpan);
-        }
-
-        const span = document.createElement("span");
-        span.className = "typed blinking";
-        line.appendChild(span);
-        terminal.appendChild(line);
-
-        let i = 0;
-        function typeChar() {
-          if (i < text.length) {
-            span.innerHTML += text[i] === "<" ? "&lt;" : text[i];
-            terminal.scrollTop = terminal.scrollHeight;
-            i++;
-            setTimeout(typeChar, 20);
-          } else {
-            span.classList.remove("blinking");
-            resolve();
-          }
-        }
-        if (text.includes("<img") || text.includes("<a")) {
-          span.innerHTML = text;
-          span.classList.remove("blinking");
-          resolve();
-        } else {
-          typeChar();
-        }
+        const id = setTimeout(resolve, ms);
+        if (skip || reduceMotion) { clearTimeout(id); resolve(); }
       });
     }
 
+    function buildLine({ prompt }) {
+      const line = document.createElement("div");
+      line.className = "line";
+      if (prompt) {
+        const promptSpan = document.createElement("span");
+        promptSpan.className = "prompt";
+        promptSpan.textContent = prompt;
+        line.appendChild(promptSpan);
+      }
+      const span = document.createElement("span");
+      span.className = "typed";
+      line.appendChild(span);
+      terminal.appendChild(line);
+      return span;
+    }
+
+    async function typeLine(entry) {
+      const span = buildLine(entry);
+
+      if (entry.html) {
+        span.innerHTML = entry.text;
+        return;
+      }
+
+      if (skip || reduceMotion) {
+        span.textContent = entry.text;
+        return;
+      }
+
+      span.classList.add("blinking");
+      for (const char of entry.text) {
+        span.appendChild(document.createTextNode(char));
+        terminal.scrollTop = terminal.scrollHeight;
+        await sleep(20);
+      }
+      span.classList.remove("blinking");
+    }
+
     async function startTyping() {
-      for (let i = 0; i < lines.length; i++) {
-        await typeLine(lines[i]);
+      for (const entry of lines) {
+        if (done) return;
+        await typeLine(entry);
       }
     }
 
